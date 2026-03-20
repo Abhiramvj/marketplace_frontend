@@ -39,7 +39,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { API_BASE } from "../services/api";
+import { API_BASE, api, shopState } from "../services/api";
 
 import Topbar from "../components/Topbar.vue";
 import AuthModal from "../components/AuthModal.vue";
@@ -61,21 +61,6 @@ const authLoading = ref(false);
 const toasts = ref([]);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function authHeaders() {
-  const headers = { "Content-Type": "application/json", "Accept": "application/json" };
-  if (token.value) headers["Authorization"] = `Bearer ${token.value}`;
-  return headers;
-}
-
-async function api(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: authHeaders(),
-    ...options,
-  });
-  const data = await res.json();
-  if (!res.ok) throw data;
-  return data;
-}
 
 function showToast(message, type = "success") {
   const id = Date.now();
@@ -89,9 +74,7 @@ function debouncedFetch() {
   // or via a global state store like Pinia. For now, we emit from Topbar.
 }
 
-const cartCount = computed(() =>
-  cartItems.value.reduce((sum, i) => sum + i.quantity, 0)
-);
+const cartCount = computed(() => shopState.cartCount);
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function openLoginModal() { authModal.value = "login"; authError.value = null; }
@@ -156,8 +139,10 @@ async function fetchCart() {
   try {
     const data = await api("/customer/cart");
     cartItems.value = data.data?.items ?? [];
+    shopState.cartCount = cartItems.value.reduce((sum, i) => sum + i.quantity, 0);
   } catch (_) {
     cartItems.value = [];
+    shopState.cartCount = 0;
   }
 }
 

@@ -23,9 +23,9 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { API_BASE } from "../services/api";
+import { API_BASE, api, shopState } from "../../services/api";
 import { useRouter } from 'vue-router';
-import Products from "../components/Products.vue";
+import Products from "../../components/Products.vue";
 
 const router = useRouter();
 
@@ -43,16 +43,6 @@ const addingToCart    = ref(null);
 const thumbColors = ["#EEF0FF","#FFF0F5","#EFF8FF","#EDFFF4","#FFF8EE","#F5EEFF","#EEFFFC","#FFF3EE"];
 const iconColors  = ["#818CF8","#F472B6","#60A5FA","#34D399","#FBBF24","#A78BFA","#2DD4BF","#FB923C"];
 
-async function api(path, options = {}) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-  const headers = { "Content-Type": "application/json", "Accept": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  
-  const res = await fetch(`${API_BASE}${path}`, { headers, ...options });
-  const data = await res.json();
-  if (!res.ok) throw data;
-  return data;
-}
 
 async function fetchProducts(page = 1) {
   productsLoading.value = true;
@@ -93,16 +83,22 @@ function selectCategory(id) {
 }
 
 function goToPage(page) { fetchProducts(page); }
-function viewProduct(product) { router.push(`/products/${product.id}`); }
+function viewProduct(product) { router.push(`/products/${product.slug}`); }
 
 async function addToCart(product) {
   addingToCart.value = product.id;
   try {
-    await api("/customer/cart/add", {
+    const data = await api("/customer/cart/store", {
       method: "POST",
       body: JSON.stringify({ product_id: product.id, quantity: 1 }),
     });
-    // Let global state/layout handle cart update for now, or use an event bus
+    // Refresh cart count
+    if (data.data?.items) {
+      shopState.cartCount = data.data.items.reduce((sum, i) => sum + i.quantity, 0);
+    } else {
+        const cart = await api("/customer/cart");
+        shopState.cartCount = cart.data?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+    }
     alert(`"${product.name}" added to cart.`);
   } catch (err) {
     alert(err.message ?? "Could not add to cart.");

@@ -1,12 +1,81 @@
+<script setup>
+import { ref, onMounted } from "vue";
+import {api, shopState } from "../services/api";
+import { useRouter } from 'vue-router';
+import Hero from "../components/Hero.vue";
+
+const router = useRouter();
+
+const productsLoading = ref(true);
+const storesLoading = ref(true);
+const featuredProducts = ref([]);
+const heroProducts = ref([]);
+const stores = ref([]);
+const totalProducts = ref(0);
+const totalStores = ref(0);
+
+const thumbColors = ["#EEF0FF", "#FFF0F5", "#EFF8FF", "#EDFFF4", "#FFF8EE", "#F5EEFF", "#EEFFFC", "#FFF3EE"];
+const iconColors = ["#818CF8", "#F472B6", "#60A5FA", "#34D399", "#FBBF24", "#A78BFA", "#2DD4BF", "#FB923C"];
+
+
+async function fetchHomeData() {
+  try {
+    const pData = await api(`/products?per_page=4`);
+    featuredProducts.value = pData.data.data ?? pData.data;
+    heroProducts.value = featuredProducts.value;
+    totalProducts.value = pData.data.total ?? featuredProducts.value.length;
+  } catch (err) {
+    console.error("Failed to load products", err);
+  } finally {
+    productsLoading.value = false;
+  }
+
+  try {
+    const sData = await api("/stores?per_page=4");
+    stores.value = sData.data.data ?? sData.data;
+    totalStores.value = sData.data.total ?? stores.value.length;
+  } catch (err) {
+    console.error("Failed to load stores", err);
+  } finally {
+    storesLoading.value = false;
+  }
+}
+
+function scrollToProducts() { document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }
+function navigateToStores() { router.push('/stores'); }
+function viewProduct(product) { router.push(`/products/${product.slug}`); }
+function viewStore(store) { router.push(`/stores/${store.store_slug}`); }
+
+async function addToCart(product) {
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    if (!token) {
+      alert("Please login first.");
+      return;
+    }
+    const data = await api("/customer/cart/store", {
+      method: "POST",
+      body: JSON.stringify({ product_id: product.id, quantity: 1 }),
+    });
+    if (data.data?.items) {
+      shopState.cartCount = data.data.items.reduce((sum, i) => sum + i.quantity, 0);
+    } else {
+        const cart = await api("/customer/cart");
+        shopState.cartCount = cart.data?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+    }
+    alert(`"${product.name}" added to cart.`);
+  } catch (err) {
+    alert(err.message ?? "Could not add to cart.");
+  }
+}
+
+onMounted(() => { fetchHomeData(); });
+</script>
+
 <template>
   <div>
-    <Hero
-      :totalProducts="totalProducts"
-      :totalStores="totalStores"
-      :heroProducts="heroProducts"
-      @scrollToProducts="scrollToProducts"
-      @scrollToStores="scrollToStores"
-    />
+    <Hero :totalProducts="totalProducts" :totalStores="totalStores" :heroProducts="heroProducts"
+      @scrollToProducts="scrollToProducts" @scrollToStores="navigateToStores" />
 
     <!-- Featured Products -->
     <main id="products" class="max-w-7xl mx-auto px-6 py-12">
@@ -20,7 +89,8 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Skeletons -->
         <template v-if="productsLoading">
-          <div v-for="n in 4" :key="'psk-'+n" class="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+          <div v-for="n in 4" :key="'psk-' + n"
+            class="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
             <div class="h-44 bg-gray-100 animate-pulse"></div>
             <div class="p-4 space-y-2">
               <div class="h-3 bg-gray-100 rounded w-2/5 animate-pulse"></div>
@@ -32,12 +102,9 @@
 
         <!-- Products -->
         <template v-else>
-          <div
-            v-for="(product, i) in featuredProducts"
-            :key="product.id"
+          <div v-for="(product, i) in featuredProducts" :key="product.id"
             class="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer relative"
-            @click="viewProduct(product)"
-          >
+            @click="viewProduct(product)">
             <span v-if="product.stock === 0"
               class="absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 z-10">
               Sold Out
@@ -47,22 +114,14 @@
               Low Stock
             </span>
 
-            <div
-              class="h-44 flex items-center justify-center overflow-hidden"
-              :style="{ background: thumbColors[i % thumbColors.length] }"
-            >
-              <img
-                v-if="product.image"
-                :src="product.image"
-                :alt="product.name"
-                loading="lazy"
-                class="w-full h-full object-cover"
-                @error="e => e.target.style.display='none'"
-              />
+            <div class="h-44 flex items-center justify-center overflow-hidden"
+              :style="{ background: thumbColors[i % thumbColors.length] }">
+              <img v-if="product.image" :src="product.image" :alt="product.name" loading="lazy"
+                class="w-full h-full object-cover" @error="e => e.target.style.display = 'none'" />
               <svg v-else width="44" height="44" viewBox="0 0 24 24" fill="none"
                 :stroke="iconColors[i % iconColors.length]" stroke-width="1.4">
-                <rect x="2" y="3" width="20" height="14" rx="2"/>
-                <path d="M8 21h8M12 17v4"/>
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8M12 17v4" />
               </svg>
             </div>
 
@@ -74,16 +133,17 @@
                 {{ product.name }}
               </h3>
               <p class="text-xs text-gray-400 mb-3">{{ product.category?.name }}</p>
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between mt-3 gap-2">
                 <span class="text-base font-bold text-gray-900">
                   ${{ Number(product.price).toFixed(2) }}
                 </span>
-                <span
-                  class="text-xs font-medium"
-                  :class="product.stock <= 5 ? 'text-amber-500' : 'text-emerald-500'"
+                <button 
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg transition-colors group/btn" 
+                  title="Add to Cart"
+                  @click.stop="addToCart(product)"
                 >
-                  {{ product.stock }} in stock
-                </span>
+                  Add To Cart
+                </button>
               </div>
             </div>
           </div>
@@ -103,7 +163,8 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Skeletons -->
         <template v-if="storesLoading">
-          <div v-for="n in 4" :key="'ssk-'+n" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-3">
+          <div v-for="n in 4" :key="'ssk-' + n"
+            class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-3">
             <div class="flex items-center gap-3">
               <div class="w-11 h-11 rounded-xl bg-gray-100 animate-pulse shrink-0"></div>
               <div class="h-4 bg-gray-100 rounded w-3/4 animate-pulse"></div>
@@ -115,17 +176,12 @@
 
         <!-- Stores -->
         <template v-else>
-          <div
-            v-for="(store, i) in stores"
-            :key="store.id"
+          <div v-for="(store, i) in stores" :key="store.id"
             class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer group flex flex-col"
-            @click="viewStore(store)"
-          >
+            @click="viewStore(store)">
             <div class="flex items-center gap-3 mb-3">
-              <div
-                class="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold shrink-0"
-                :style="{ background: thumbColors[i % thumbColors.length], color: iconColors[i % iconColors.length] }"
-              >
+              <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold shrink-0"
+                :style="{ background: thumbColors[i % thumbColors.length], color: iconColors[i % iconColors.length] }">
                 {{ store.store_name.charAt(0) }}
               </div>
               <h3 class="font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
@@ -142,7 +198,7 @@
                 {{ store.products_count ?? store.products?.length ?? 0 }} products
               </span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5">
-                <path d="m9 18 6-6-6-6"/>
+                <path d="m9 18 6-6-6-6" />
               </svg>
             </div>
           </div>
@@ -151,61 +207,3 @@
     </section>
   </div>
 </template>
-
-<script setup>
-import { ref, onMounted } from "vue";
-import { API_BASE } from "../services/api";
-import { useRouter } from 'vue-router';
-import Hero from "../components/Hero.vue";
-
-const router = useRouter();
-
-const productsLoading  = ref(true);
-const storesLoading    = ref(true);
-const featuredProducts = ref([]);
-const heroProducts     = ref([]);
-const stores           = ref([]);
-const totalProducts    = ref(0);
-const totalStores      = ref(0);
-
-const thumbColors = ["#EEF0FF","#FFF0F5","#EFF8FF","#EDFFF4","#FFF8EE","#F5EEFF","#EEFFFC","#FFF3EE"];
-const iconColors  = ["#818CF8","#F472B6","#60A5FA","#34D399","#FBBF24","#A78BFA","#2DD4BF","#FB923C"];
-
-async function api(path, options = {}) {
-  const headers = { "Content-Type": "application/json", "Accept": "application/json" };
-  const res = await fetch(`${API_BASE}${path}`, { headers, ...options });
-  const data = await res.json();
-  if (!res.ok) throw data;
-  return data;
-}
-
-async function fetchHomeData() {
-  try {
-    const pData = await api(`/products?per_page=4`);
-    featuredProducts.value = pData.data.data ?? pData.data;
-    heroProducts.value     = featuredProducts.value;
-    totalProducts.value    = pData.data.total ?? featuredProducts.value.length;
-  } catch (err) {
-    console.error("Failed to load products", err);
-  } finally {
-    productsLoading.value = false;
-  }
-
-  try {
-    const sData = await api("/stores?per_page=4");
-    stores.value      = sData.data.data ?? sData.data;
-    totalStores.value = sData.data.total ?? stores.value.length;
-  } catch (err) {
-    console.error("Failed to load stores", err);
-  } finally {
-    storesLoading.value = false;
-  }
-}
-
-function scrollToProducts() { document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }
-function scrollToStores()   { document.getElementById("stores")?.scrollIntoView({ behavior: "smooth" }); }
-function viewProduct(product) { router.push(`/products/${product.id}`); }
-function viewStore(store)     { router.push(`/stores/${store.store_slug}`); }
-
-onMounted(() => { fetchHomeData(); });
-</script>

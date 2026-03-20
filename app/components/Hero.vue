@@ -83,14 +83,6 @@
         </div>
       </div>
 
-      <!-- Toast -->
-      <div class="absolute -bottom-4 -left-4 bg-white rounded-2xl px-4 py-3 shadow-lg flex items-center gap-3 border border-gray-50">
-        <span class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm flex items-center justify-center">✓</span>
-        <div>
-          <p class="text-xs font-semibold text-gray-900 leading-none mb-0.5">Order Delivered!</p>
-          <p class="text-xs text-gray-400">2 mins ago</p>
-        </div>
-      </div>
     </div>
 
   </header>

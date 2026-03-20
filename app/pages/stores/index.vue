@@ -10,9 +10,9 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { API_BASE } from "../services/api";
+import { API_BASE } from "../../services/api";
 import { useRouter } from 'vue-router';
-import Stores from "../components/Stores.vue";
+import Stores from "../../components/Stores.vue";
 
 const router = useRouter();
 
