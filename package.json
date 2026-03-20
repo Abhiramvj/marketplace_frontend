@@ -1,0 +1,27 @@
+{
+  "name": "marketplace-frontend",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@primevue/nuxt-module": "^4.5.4",
+    "@primevue/themes": "^4.5.4",
+    "axios": "^1.13.6",
+    "lucide-vue-next": "^0.577.0",
+    "nuxt": "^4.3.1",
+    "pinia": "^3.0.4",
+    "primevue": "^4.5.4",
+    "vue": "^3.5.29",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "tailwindcss": "^4.2.1"
+  }
+}
